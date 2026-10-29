@@ -7,12 +7,13 @@ O que faz
 1. Procura na pasta de origem todos os arquivos CDB_LOCAL_AAAAMMDD
    (.xlsx, .xlsm, .xlsb, .xls ou .csv).
 2. Le so as colunas necessarias (bem mais rapido do que abrir o arquivo inteiro).
-3. Monta uma linha por coleta com: CLIENTE, NOME_POSTO, FINALIDADE, CPF_CIDADAO,
+3. Monta uma linha por coleta com: CLIENTE, NOME_POSTO, FINALIDADE, LOCALIDADE,
+   HOSTNAME, IP_ESTACAO (dadosColeta.ipEstacao), CPF_CIDADAO,
    ID_COLETA, ANO, MES_ANO, DATA e as colunas dos 10 dedos
    ("1 - polegar da mao direita" ... "10 - minimo da mao esquerda").
    A DATA vem da coluna dataInclusao (ver ORIGEM_DATA).
 4. Filtra o periodo pela dataInclusao (opcional: DATA_INICIO / DATA_FIM).
-5. Salva um arquivo por cliente em .csv (e em .xlsx, se couber no limite do Excel).
+5. Salva um arquivo por cliente e por mes em .csv (e em .xlsx, se couber no limite do Excel).
 
 Uso
 ---
@@ -45,6 +46,7 @@ BUSCAR_SUBPASTAS = False   # True = procura os CDB_LOCAL tambem nas subpastas
 
 SEPARAR_POR_CLIENTE = True   # True = um arquivo por CLIENTE (AGRUPADO_CDB_LOCAL_<CLIENTE>.csv)
 GERAR_ARQUIVO_GERAL = False  # True = gera tambem o arquivo com todos os clientes juntos
+SEPARAR_POR_MES = True       # True = um arquivo por mes da DATA (..._AAAA-MM.csv); combina com o cliente
 
 # De onde vem a DATA do agrupamento:
 #   "inclusao" -> coluna dataInclusao (se vazia/invalida, usa a data do nome do arquivo)
@@ -90,6 +92,9 @@ COLUNAS_ORIGEM = {
     "CLIENTE": "CLIENTE",
     "NOME_POSTO": "NOME FANTASIA",
     "FINALIDADE": "FINALIDADE",
+    "LOCALIDADE": "LOCALIDADE",
+    "HOSTNAME": "HOSTNAME",
+    "IP_ESTACAO": "DADOSCOLETA.IPESTACAO",
     "CPF_CIDADAO": "CPF",
     "ID_COLETA": "IDCOLETA",
     "DATA_COLETA": "DADOSCOLETA.DATA",
@@ -100,7 +105,7 @@ COLUNAS_DATA = {
     "inclusao": ("DATAINCLUSAO", "dataInclusao"),
     "coleta": ("DADOSCOLETA.DATA", "dadosColeta.data"),
 }
-CHAVES = ["CLIENTE", "NOME_POSTO", "FINALIDADE", "CPF_CIDADAO", "ID_COLETA", "ANO", "MES_ANO", "DATA"]
+CHAVES = ["CLIENTE", "NOME_POSTO", "FINALIDADE", "LOCALIDADE", "HOSTNAME", "IP_ESTACAO", "CPF_CIDADAO", "ID_COLETA", "ANO", "MES_ANO", "DATA"]
 COLUNAS_RESULTADO = CHAVES + COLUNAS_DEDOS
 
 COLUNAS_LIDAS = set(COLUNAS_ORIGEM.values()) | set(DEDOS_NORM)
@@ -239,6 +244,9 @@ def processar(data_arquivo, caminho):
     r["CLIENTE"] = texto(df["CLIENTE"])
     r["NOME_POSTO"] = texto(df["NOME FANTASIA"])
     r["FINALIDADE"] = texto(df["FINALIDADE"])
+    r["LOCALIDADE"] = texto(df["LOCALIDADE"])
+    r["HOSTNAME"] = texto(df["HOSTNAME"])
+    r["IP_ESTACAO"] = texto(df["DADOSCOLETA.IPESTACAO"])
     r["CPF_CIDADAO"] = limpar_cpf(df["CPF"])
     r["ID_COLETA"] = texto_id(df["IDCOLETA"])
 
@@ -293,7 +301,7 @@ def salvar(resultado, pasta_saida, nome_saida=NOME_SAIDA):
         if len(resultado) > LIMITE_EXCEL:
             print(f"  .xlsx nao gerado: {len(resultado):,} linhas passam do limite do Excel (use o .csv).")
         else:
-            xlsx = os.path.join(pasta_saida, NOME_SAIDA + ".xlsx")
+            xlsx = os.path.join(pasta_saida, nome_saida + ".xlsx")
             col_data = resultado.columns.get_loc("DATA") + 1
             try:
                 with pd.ExcelWriter(xlsx, engine="openpyxl") as w:
@@ -306,6 +314,16 @@ def salvar(resultado, pasta_saida, nome_saida=NOME_SAIDA):
                 gerados.append(xlsx)
             except PermissionError:
                 print(f"  !! Nao consegui gravar {xlsx} (arquivo aberto?). Feche e rode de novo.")
+    return gerados
+
+
+def salvar_por_mes(resultado, pasta_saida, nome_saida):
+    """Um arquivo por mes (DATA): <nome_saida>_AAAA-MM.csv / .xlsx."""
+    gerados = []
+    meses = resultado["DATA"].dt.strftime("%Y-%m")
+    for mes, parte in resultado.groupby(meses, sort=True):
+        print(f"    {mes}: {len(parte):,} linha(s)")
+        gerados += salvar(parte.reset_index(drop=True), pasta_saida, f"{nome_saida}_{mes}")
     return gerados
 
 
@@ -372,14 +390,22 @@ def main():
         sys.exit(1)
 
     gerados = []
-    if GERAR_ARQUIVO_GERAL or not SEPARAR_POR_CLIENTE:
-        gerados += salvar(resultado, pasta_saida)
+    if GERAR_ARQUIVO_GERAL or not (SEPARAR_POR_CLIENTE or SEPARAR_POR_MES):
+        if SEPARAR_POR_MES:
+            gerados += salvar_por_mes(resultado, pasta_saida, NOME_SAIDA)
+        else:
+            gerados += salvar(resultado, pasta_saida)
     if SEPARAR_POR_CLIENTE:
         print(f"\nSeparando por cliente ({resultado['CLIENTE'].nunique()} cliente(s)):")
         for cliente, parte in resultado.groupby("CLIENTE", sort=True):
             nome = f"{NOME_SAIDA}_{nome_arquivo(cliente)}"
             print(f"  {cliente or '(sem cliente)'}: {len(parte):,} linha(s)")
-            gerados += salvar(parte.reset_index(drop=True), pasta_saida, nome)
+            if SEPARAR_POR_MES:
+                gerados += salvar_por_mes(parte, pasta_saida, nome)
+            else:
+                gerados += salvar(parte.reset_index(drop=True), pasta_saida, nome)
+    elif SEPARAR_POR_MES and not GERAR_ARQUIVO_GERAL:
+        gerados += salvar_por_mes(resultado, pasta_saida, NOME_SAIDA)
 
     print()
     for g in gerados:

@@ -7,7 +7,7 @@ O que faz
 1. Procura na pasta de origem todos os arquivos CDB_LOCAL_AAAAMMDD
    (.xlsx, .xlsm, .xlsb, .xls ou .csv).
 2. Le so as colunas necessarias (bem mais rapido do que abrir o arquivo inteiro).
-3. Monta uma linha por coleta com: CLIENTE, NOME_POSTO, FINALIDADE, LOCALIDADE,
+3. Monta uma linha por coleta com: CLIENTE, NOME_POSTO, FINALIDADE,
    HOSTNAME, IP_ESTACAO (dadosColeta.ipEstacao), CPF_CIDADAO,
    ID_COLETA, ANO, MES_ANO, DATA e as colunas dos 10 dedos
    ("1 - polegar da mao direita" ... "10 - minimo da mao esquerda").
@@ -55,8 +55,8 @@ SEPARAR_POR_MES = True       # True = um arquivo por mes da DATA (..._AAAA-MM.cs
 ORIGEM_DATA = "inclusao"
 
 # Filtro de periodo pela DATA (dataInclusao). None = sem limite. Formato DD/MM/AAAA.
-DATA_INICIO = None   # ex.: "01/10/2026"
-DATA_FIM = None      # ex.: "31/10/2026"
+DATA_INICIO = "01/01/2026"   # so coletas de 2026
+DATA_FIM = "31/12/2026"
 
 # Se a mesma idColeta aparecer em mais de um consolidado, mantem so a do arquivo
 # mais recente (evita a mesma coleta em duas linhas).
@@ -92,7 +92,6 @@ COLUNAS_ORIGEM = {
     "CLIENTE": "CLIENTE",
     "NOME_POSTO": "NOME FANTASIA",
     "FINALIDADE": "FINALIDADE",
-    "LOCALIDADE": "LOCALIDADE",
     "HOSTNAME": "HOSTNAME",
     "IP_ESTACAO": "DADOSCOLETA.IPESTACAO",
     "CPF_CIDADAO": "CPF",
@@ -105,7 +104,7 @@ COLUNAS_DATA = {
     "inclusao": ("DATAINCLUSAO", "dataInclusao"),
     "coleta": ("DADOSCOLETA.DATA", "dadosColeta.data"),
 }
-CHAVES = ["CLIENTE", "NOME_POSTO", "FINALIDADE", "LOCALIDADE", "HOSTNAME", "IP_ESTACAO", "CPF_CIDADAO", "ID_COLETA", "ANO", "MES_ANO", "DATA"]
+CHAVES = ["CLIENTE", "NOME_POSTO", "HOSTNAME", "IP_ESTACAO", "FINALIDADE", "CPF_CIDADAO", "ID_COLETA", "ANO", "MES_ANO", "DATA"]
 COLUNAS_RESULTADO = CHAVES + COLUNAS_DEDOS
 
 COLUNAS_LIDAS = set(COLUNAS_ORIGEM.values()) | set(DEDOS_NORM)
@@ -244,7 +243,6 @@ def processar(data_arquivo, caminho):
     r["CLIENTE"] = texto(df["CLIENTE"])
     r["NOME_POSTO"] = texto(df["NOME FANTASIA"])
     r["FINALIDADE"] = texto(df["FINALIDADE"])
-    r["LOCALIDADE"] = texto(df["LOCALIDADE"])
     r["HOSTNAME"] = texto(df["HOSTNAME"])
     r["IP_ESTACAO"] = texto(df["DADOSCOLETA.IPESTACAO"])
     r["CPF_CIDADAO"] = limpar_cpf(df["CPF"])

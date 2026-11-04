@@ -74,7 +74,7 @@ As opções ficam no bloco `CONFIGURACAO`, no início do script:
 | `SEPARAR_POR_CLIENTE` | `True` | Gera um arquivo por cliente. |
 | `GERAR_ARQUIVO_GERAL` | `False` | Gera também um arquivo com todos os clientes juntos. |
 | `ORIGEM_DATA` | `"inclusao"` | De onde vem a `DATA`: `"inclusao"` (`dataInclusao`), `"coleta"` (`dadosColeta.data`) ou `"arquivo"` (data no nome do arquivo). |
-| `DATA_INICIO` / `DATA_FIM` | `None` | Filtro de período pela `DATA`, no formato `"DD/MM/AAAA"`. `None` = sem limite. |
+| `DATA_INICIO` / `DATA_FIM` | `"01/01/2026"` / `"31/12/2026"` | Filtro de período pela `DATA`, no formato `"DD/MM/AAAA"`. Padrão: só 2026. `None` = sem limite. |
 | `REMOVER_COLETAS_DUPLICADAS` | `True` | Mantém só a versão mais recente de uma `idColeta` repetida entre arquivos. |
 | `FUSO_HORARIO` | `America/Sao_Paulo` | Fuso usado para converter datas que vêm em UTC (ex.: `2026-10-23T17:33:00Z`). |
 

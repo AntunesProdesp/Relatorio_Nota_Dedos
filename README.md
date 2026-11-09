@@ -16,11 +16,14 @@ O script `agrupa_notas_cdb_local.py` junta os consolidados diários `CDB_LOCAL_A
 | Coluna | Origem no consolidado |
 |---|---|
 | `CLIENTE` | `cliente` |
+| `NOME_LOCAL` | `dadosColeta.nomeLocal` |
 | `NOME_POSTO` | `NOME FANTASIA` (nome do posto) |
 | `FINALIDADE` | `finalidade` |
 | `CPF_CIDADAO` | `cpf` (só dígitos, completado com zeros até 11) |
 | `ID_COLETA` | `idColeta` |
-| `ANO`, `MES_ANO`, `DATA` | `dataInclusao` (ver `ORIGEM_DATA`) |
+| `ANO`, `MES_ANO` | `dataInclusao` (ver `ORIGEM_DATA`) |
+| `DATA_COLETA` | `dadosColeta.data` (fica em branco se vazia ou inválida) |
+| `DATA` | `dataInclusao` (ver `ORIGEM_DATA`) |
 | `1 - polegar da mao direita` … `10 - minimo da mao esquerda` | colunas dos dedos, com o mesmo nome |
 
 Os nomes das colunas de origem são comparados sem considerar acentos, maiúsculas ou espaços extras.

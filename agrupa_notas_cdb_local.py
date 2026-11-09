@@ -7,9 +7,10 @@ O que faz
 1. Procura na pasta de origem todos os arquivos CDB_LOCAL_AAAAMMDD
    (.xlsx, .xlsm, .xlsb, .xls ou .csv).
 2. Le so as colunas necessarias (bem mais rapido do que abrir o arquivo inteiro).
-3. Monta uma linha por coleta com: CLIENTE, NOME_POSTO, FINALIDADE,
-   HOSTNAME, IP_ESTACAO (dadosColeta.ipEstacao), CPF_CIDADAO,
-   ID_COLETA, ANO, MES_ANO, DATA e as colunas dos 10 dedos
+3. Monta uma linha por coleta com: CLIENTE, NOME_LOCAL (dadosColeta.nomeLocal),
+   NOME_POSTO, FINALIDADE, HOSTNAME, IP_ESTACAO (dadosColeta.ipEstacao),
+   CPF_CIDADAO, ID_COLETA, ANO, MES_ANO, DATA_COLETA (dadosColeta.data),
+   DATA e as colunas dos 10 dedos
    ("1 - polegar da mao direita" ... "10 - minimo da mao esquerda").
    A DATA vem da coluna dataInclusao (ver ORIGEM_DATA).
 4. Filtra o periodo pela dataInclusao (opcional: DATA_INICIO / DATA_FIM).
@@ -90,6 +91,7 @@ DEDOS_NORM = {normalizar(c): c for c in COLUNAS_DEDOS}
 # nome no resultado -> nome da coluna no consolidado (normalizado: sem acento, maiusculo)
 COLUNAS_ORIGEM = {
     "CLIENTE": "CLIENTE",
+    "NOME_LOCAL": "DADOSCOLETA.NOMELOCAL",
     "NOME_POSTO": "NOME FANTASIA",
     "FINALIDADE": "FINALIDADE",
     "HOSTNAME": "HOSTNAME",
@@ -104,7 +106,8 @@ COLUNAS_DATA = {
     "inclusao": ("DATAINCLUSAO", "dataInclusao"),
     "coleta": ("DADOSCOLETA.DATA", "dadosColeta.data"),
 }
-CHAVES = ["CLIENTE", "NOME_POSTO", "HOSTNAME", "IP_ESTACAO", "FINALIDADE", "CPF_CIDADAO", "ID_COLETA", "ANO", "MES_ANO", "DATA"]
+CHAVES = ["CLIENTE", "NOME_LOCAL", "NOME_POSTO", "HOSTNAME", "IP_ESTACAO", "FINALIDADE", "CPF_CIDADAO", "ID_COLETA",
+          "ANO", "MES_ANO", "DATA_COLETA", "DATA"]
 COLUNAS_RESULTADO = CHAVES + COLUNAS_DEDOS
 
 COLUNAS_LIDAS = set(COLUNAS_ORIGEM.values()) | set(DEDOS_NORM)
@@ -241,6 +244,7 @@ def processar(data_arquivo, caminho):
 
     r = pd.DataFrame(index=df.index)
     r["CLIENTE"] = texto(df["CLIENTE"])
+    r["NOME_LOCAL"] = texto(df["DADOSCOLETA.NOMELOCAL"])
     r["NOME_POSTO"] = texto(df["NOME FANTASIA"])
     r["FINALIDADE"] = texto(df["FINALIDADE"])
     r["HOSTNAME"] = texto(df["HOSTNAME"])
@@ -260,6 +264,7 @@ def processar(data_arquivo, caminho):
 
     r["ANO"] = data.dt.year.astype(int)
     r["MES_ANO"] = data.dt.strftime("%m/%Y")
+    r["DATA_COLETA"] = converter_data(df["DADOSCOLETA.DATA"])  # sem fallback: vazia fica em branco
     r["DATA"] = data
 
     for norm, nome in DEDOS_NORM.items():
@@ -300,13 +305,14 @@ def salvar(resultado, pasta_saida, nome_saida=NOME_SAIDA):
             print(f"  .xlsx nao gerado: {len(resultado):,} linhas passam do limite do Excel (use o .csv).")
         else:
             xlsx = os.path.join(pasta_saida, nome_saida + ".xlsx")
-            col_data = resultado.columns.get_loc("DATA") + 1
+            cols_data = [resultado.columns.get_loc(c) + 1 for c in ("DATA_COLETA", "DATA")]
             try:
                 with pd.ExcelWriter(xlsx, engine="openpyxl") as w:
                     resultado.to_excel(w, index=False, sheet_name="AGRUPADO")
                     ws = w.sheets["AGRUPADO"]
-                    for (cel,) in ws.iter_rows(min_row=2, min_col=col_data, max_col=col_data):
-                        cel.number_format = "DD/MM/YYYY"
+                    for col_data in cols_data:
+                        for (cel,) in ws.iter_rows(min_row=2, min_col=col_data, max_col=col_data):
+                            cel.number_format = "DD/MM/YYYY"
                     ws.freeze_panes = "A2"
                     ws.auto_filter.ref = ws.dimensions
                 gerados.append(xlsx)
